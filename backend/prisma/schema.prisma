@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  CANCELED
+  PAST_DUE
+  INACTIVE
+}
+
+enum BillingProvider {
+  MOCK
+  STRIPE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurants  Restaurant[]
+  subscription Subscription?
+}
+
+model Restaurant {
+  id          String   @id @default(cuid())
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?
+  logoPublicId String?
+  accentColor String?  @default("#111827")
+  address     String?
+  phone       String?
+
+  // Social / contact (free)
+  whatsapp    String?
+  instagram   String?
+
+  // Opening hours, stored as JSON: { mon: {open:"09:00", close:"22:00", closed:false}, ... }
+  openingHours String?
+
+  // --- Pro-only branding ---
+  bannerUrl      String?
+  bannerPublicId String?
+  fontFamily     String?  @default("inter")   // inter | playfair | poppins
+  layoutTemplate String?  @default("classic") // classic | grid | minimal
+  qrColor        String?  @default("#111827")
+  qrIncludeLogo  Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categories  Category[]
+  menuItems   MenuItem[]
+
+  @@index([ownerId])
+}
+
+model Category {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  name         String
+  sortOrder    Int        @default(0)
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  menuItems    MenuItem[]
+
+  @@index([restaurantId])
+}
+
+model MenuItem {
+  id            String     @id @default(cuid())
+  restaurantId  String
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  name          String
+  description   String?
+  price         Decimal    @db.Decimal(10, 2)
+  imageUrl      String?
+  imagePublicId String?
+  isAvailable   Boolean    @default(true)
+  isFeatured    Boolean    @default(false)
+  sortOrder     Int        @default(0)
+
+  // Tags
+  isVeg         Boolean    @default(true)
+  isSpicy       Boolean    @default(false)
+  isBestseller  Boolean    @default(false)
+  allergens     String?    // comma-separated, e.g. "peanuts,dairy"
+
+  // Variants: JSON array of { name: string, priceDelta: number }
+  // e.g. [{"name":"Half","priceDelta":0},{"name":"Full","priceDelta":80}]
+  // Add-ons: JSON array of { name: string, price: number }
+  variants      String?
+  addOns        String?
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([restaurantId])
+  @@index([categoryId])
+}
+
+model Subscription {
+  id                 String              @id @default(cuid())
+  userId             String              @unique
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan               Plan                @default(FREE)
+  status             SubscriptionStatus  @default(ACTIVE)
+  provider           BillingProvider     @default(MOCK)
+
+  customerId         String?
+  subscriptionId     String?
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAtPeriodEnd  Boolean             @default(false)
+
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}

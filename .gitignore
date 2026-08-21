@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.vercel/
+
+# Env files (never commit secrets)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Prisma
+backend/prisma/migrations/dev.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# TypeScript
+*.tsbuildinfo
